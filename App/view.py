@@ -1,4 +1,5 @@
 import sys
+import App.logic as logic
 
 
 def new_logic():
@@ -6,7 +7,8 @@ def new_logic():
         Se crea una instancia del controlador
     """
     #TODO: Llamar la función de la lógica donde se crean las estructuras de datos
-    pass
+    return logic.new_logic()
+    
 
 def print_menu():
     print("Bienvenido")
@@ -26,7 +28,19 @@ def load_data(control):
     Carga los datos
     """
     #TODO: Realizar la carga de datos
-    pass
+    
+    filename = input("Indiquez le chemin du fichier CSV: ")
+    control = logic.load_data(control, filename)
+    
+    # Affiche les 5 premiers trajets
+    if control and "taxis" in control:
+        print("Primeros 5 trayectos:")
+        for t in control["taxis"][:5]:
+            print(t)
+        print("Ultimos 5 trayectos:")
+        for t in control["taxis"][-5:]: 
+            print(t)
+    return control
 
 
 def print_data(control, id):
@@ -34,14 +48,17 @@ def print_data(control, id):
         Función que imprime un dato dado su ID
     """
     #TODO: Realizar la función para imprimir un elemento
-    pass
+    return logic.get_data(control,id)
+    
 
 def print_req_1(control):
     """
         Función que imprime la solución del Requerimiento 1 en consola
     """
     # TODO: Imprimir el resultado del requerimiento 1
-    pass
+    num=int(input("trayectos de cuantos pasajeros ? "))
+    print(logic.req_1(control,num))
+    
 
 
 def print_req_2(control):
@@ -65,15 +82,22 @@ def print_req_4(control):
         Función que imprime la solución del Requerimiento 4 en consola
     """
     # TODO: Imprimir el resultado del requerimiento 4
-    pass
+    fecha_ini=input("fecha inicial del filtro (YYYY-MM-DD) :")
+    fecha_fin=input("fecha final del filtro (YYYY-MM-DD) :")
+    filtro=input("mayor (MAYOR) or menor (MENOR) por el filtro : ")
+    print(logic.req_4(control,filtro,fecha_ini,fecha_fin))
+    
 
 
 def print_req_5(control):
     """
         Función que imprime la solución del Requerimiento 5 en consola
     """
-    # TODO: Imprimir el resultado del requerimiento 5
-    pass
+    # TODO: Imprimir el resultado del requerimiento 
+    fecha_ini=input("fecha inicial del filtro (YYYY-MM-DD) :")
+    fecha_fin=input("fecha final del filtro (YYYY-MM-DD) :")
+    filtro=input("mayor (MAYOR) or menor (MENOR) por el filtro : ")
+    print(logic.req_5(control,filtro,fecha_ini,fecha_fin))
 
 
 def print_req_6(control):

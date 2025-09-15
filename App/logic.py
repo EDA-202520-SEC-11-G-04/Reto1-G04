@@ -1,11 +1,21 @@
 import time
+import sys
+import csv
+from collections import Counter, defaultdict
+from datetime import datetime
+from math import radians, sin, cos, sqrt, atan2
+
+default_limit = 1000
+sys.setrecursionlimit(default_limit*10)
 
 def new_logic():
     """
     Crea el catalogo para almacenar las estructuras de datos
     """
     #TODO: Llama a las funciónes de creación de las estructuras de datos
-    pass
+    catalog = {
+        "trayectos": []}
+    return catalog
 
 
 # Funciones para la carga de datos
@@ -15,7 +25,23 @@ def load_data(catalog, filename):
     Carga los datos del reto
     """
     # TODO: Realizar la carga de datos
-    pass
+    start_time = time.perf_counter()
+    data = []
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                data.append(row)
+    except Exception as e:
+        print(f"Error al leer el archivo: {e}")
+        return None
+
+    end_time = time.perf_counter()
+    elapsed = (end_time - start_time) * 1000  # milisegundos
+    print(f"Archivo cargado correctamente en {elapsed:.2f} ms. Total de trayectos: {len(data)}")
+    catalog["taxis"] = data
+    return catalog
+   
 
 # Funciones de consulta sobre el catálogo
 
@@ -24,15 +50,76 @@ def get_data(catalog, id):
     Retorna un dato por su ID.
     """
     #TODO: Consulta en las Llamar la función del modelo para obtener un dato
-    pass
+    try:
+        return catalog["taxis"][index]
+    except IndexError:
+        return None
+    except KeyError:
+        print("El catálogo no contiene la clave 'taxis'.")
+        return None
 
 
-def req_1(catalog):
+def req_1(catalog,num_pasajeros):
     """
     Retorna el resultado del requerimiento 1
     """
     # TODO: Modificar el requerimiento 1
-    pass
+    
+    inicio = time.time()  # Pour mesurer le temps d'exécution
+
+    trayectos_filtrados = [
+        t for t in catalog.get("taxis", [])
+        if int(t["passenger_count"]) == num_pasajeros
+    ]
+    
+    total_trayectos = len(trayectos_filtrados)
+    if total_trayectos == 0:
+        return {"mensaje": f"No hay trayectos para {num_pasajeros} pasajeros."}
+
+    suma_duracion = 0
+    suma_costo = 0
+    suma_distancia = 0
+    suma_peajes = 0
+    suma_propina = 0
+    fechas_inicio = []
+    tipos_pago = []
+
+    for t in trayectos_filtrados:
+        inicio_tray = datetime.strptime(t["pickup_datetime"], "%Y-%m-%d %H:%M:%S")
+        fin_tray = datetime.strptime(t["dropoff_datetime"], "%Y-%m-%d %H:%M:%S")
+        duracion_min = (fin_tray - inicio_tray).total_seconds() / 60
+        suma_duracion += duracion_min
+        suma_costo += float(t["total_amount"])
+        suma_distancia += float(t["trip_distance"])
+        suma_peajes += float(t["tolls_amount"])
+        suma_propina += float(t["tip_amount"])
+        fechas_inicio.append(inicio_tray.strftime("%Y-%m-%d"))
+        tipos_pago.append(t["payment_type"])
+    
+    tiempo_promedio = suma_duracion / total_trayectos
+    costo_promedio = suma_costo / total_trayectos
+    distancia_promedio = suma_distancia / total_trayectos
+    peaje_promedio = suma_peajes / total_trayectos
+    propina_promedio = suma_propina / total_trayectos
+
+    pago_mas_usado = Counter(tipos_pago).most_common(1)[0]
+    fecha_mas_frecuente = Counter(fechas_inicio).most_common(1)[0][0]
+
+    fin = time.time()
+    tiempo_ejecucion_ms = (fin - inicio) * 1000
+    
+    return {
+        "tiempo_ejecucion_ms": tiempo_ejecucion_ms,
+        "total_trayectos": total_trayectos,
+        "tiempo_promedio_min": tiempo_promedio,
+        "costo_total_promedio": costo_promedio,
+        "distancia_promedio_millas": distancia_promedio,
+        "peaje_promedio": peaje_promedio,
+        "propina_promedio": propina_promedio,
+        "tipo_pago_mas_usado": f"{pago_mas_usado[0]} - {pago_mas_usado[1]}",
+        "fecha_inicio_mas_frecuente": fecha_mas_frecuente
+    }
+    
 
 
 def req_2(catalog):
@@ -51,20 +138,184 @@ def req_3(catalog):
     pass
 
 
-def req_4(catalog):
-    """
-    Retorna el resultado del requerimiento 4
-    """
-    # TODO: Modificar el requerimiento 4
-    pass
+def req_4(catalog, filtro, fecha_inicio_str, fecha_fin_str):
+    inicio = time.time()
+    fecha_inicio = datetime.strptime(fecha_inicio_str, "%Y-%m-%d").date()
+    fecha_fin = datetime.strptime(fecha_fin_str, "%Y-%m-%d").date()
+
+    combinaciones = defaultdict(list)
+    centroides= cargar_centroides("Data/nyc-neighborhoods.csv")
+
+    for t in catalog["taxis"]:
+        try:
+            fecha = datetime.strptime(t["pickup_datetime"], "%Y-%m-%d %H:%M:%S").date()
+            if not (fecha_inicio <= fecha <= fecha_fin):
+                continue
+
+            ori = barrio_mas_cercano(float(t["pickup_latitude"]), float(t["pickup_longitude"]), centroides)
+            dest = barrio_mas_cercano(float(t["dropoff_latitude"]), float(t["dropoff_longitude"]), centroides)
+            dur = (datetime.strptime(t["dropoff_datetime"], "%Y-%m-%d %H:%M:%S") -
+                   datetime.strptime(t["pickup_datetime"], "%Y-%m-%d %H:%M:%S")).total_seconds()/60
+            combinaciones[(ori, dest)].append((float(t["trip_distance"]), dur, float(t["total_amount"])))
+        except:
+            continue
+
+    promedios = {k: (sum(d[0] for d in v)/len(v),
+                     sum(d[1] for d in v)/len(v),
+                     sum(d[2] for d in v)/len(v))
+                 for k, v in combinaciones.items()}
+
+    if not promedios:
+        return {"mensaje": "No hay trayectos en ese rango de fechas."}
+
+    if filtro.upper() == "MAYOR":
+        sel = max(promedios.items(), key=lambda x: x[1][2])
+    elif filtro.upper() == "MENOR":
+        sel = min(promedios.items(), key=lambda x: x[1][2])
+    else:
+        return {"mensaje": "Filtro inválido"}
+
+    fin = time.time()
+    tiempo_ejecucion_ms = (fin - inicio) * 1000
+    (ori, dest), (dist_prom, tiempo_prom, costo_prom) = sel
+
+    return {
+        "tiempo_ejecucion_ms": tiempo_ejecucion_ms,
+        "filtro_costo": filtro.upper(),
+        "total_trayectos": sum(len(v) for v in combinaciones.values()),
+        "origen": ori,
+        "destino": dest,
+        "distancia_promedio_millas": dist_prom,
+        "tiempo_promedio_min": tiempo_prom,
+        "costo_total_promedio": costo_prom
+    }
+    
+
+def cargar_centroides(filename):
+    centroides = {}
+    try:
+        with open(filename, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=';')
+            for row in reader:
+                barrio = row["neighborhood"]
+                lat = float(row["latitude"].replace(",", "."))
+                lon = float(row["longitude"].replace(",", "."))
+                centroides[barrio] = (lat, lon)
+    except Exception as e:
+        print(f"Error al leer archivo de barrios: {e}")
+    return centroides
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3958.8  # miles
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    return R * c
+
+def barrio_mas_cercano(lat, lon, centroides):
+    min_dist = float('inf')
+    barrio_sel = None
+    for barrio, (lat_c, lon_c) in centroides.items():
+        dist = haversine(lat, lon, lat_c, lon_c)
+        if dist < min_dist:
+            min_dist = dist
+            barrio_sel = barrio
+    return barrio_sel
 
 
-def req_5(catalog):
-    """
-    Retorna el resultado del requerimiento 5
-    """
-    # TODO: Modificar el requerimiento 5
-    pass
+
+def req_5(catalog, filtro, fecha_inicio_str, fecha_fin_str):
+
+    inicio = time.time()
+
+    # Conversion de fechas
+    fecha_inicio = datetime.strptime(fecha_inicio_str, "%Y-%m-%d").date()
+    fecha_fin = datetime.strptime(fecha_fin_str, "%Y-%m-%d").date()
+
+    trayectos = catalog.get("taxis", [])
+
+    # Diccionario para acumular datos por franja horaria
+    franjas = defaultdict(lambda: {
+        "costos": [],
+        "duraciones": [],
+        "pasajeros": [],
+        "trayectos": []
+    })
+
+    total_filtrados = 0
+
+    for t in trayectos:
+        try:
+            pickup = datetime.strptime(t["pickup_datetime"], "%Y-%m-%d %H:%M:%S")
+            dropoff = datetime.strptime(t["dropoff_datetime"], "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            continue
+
+        # Filtrar por rango de fechas (solo la fecha de inicio)
+        if not (fecha_inicio <= pickup.date() <= fecha_fin):
+            continue
+
+        total_filtrados += 1
+        franja = pickup.hour  # ej. 13 → franja [13 - 14)
+
+        duracion_min = (dropoff - pickup).total_seconds() / 60
+        costo = float(t["total_amount"])
+        pasajeros = int(t["passenger_count"])
+
+        franjas[franja]["costos"].append(costo)
+        franjas[franja]["duraciones"].append(duracion_min)
+        franjas[franja]["pasajeros"].append(pasajeros)
+        franjas[franja]["trayectos"].append({
+            "costo": costo,
+            "dropoff": dropoff
+        })
+
+    if total_filtrados == 0:
+        return {"mensaje": "No hay trayectos en ese rango de fechas."}
+
+    # Calcular estadísticas por franja
+    stats_franjas = []
+    for franja, datos in franjas.items():
+        if not datos["costos"]:
+            continue
+
+        costo_prom = sum(datos["costos"]) / len(datos["costos"])
+        duracion_prom = sum(datos["duraciones"]) / len(datos["duraciones"])
+        pasajeros_prom = sum(datos["pasajeros"]) / len(datos["pasajeros"])
+
+        # Mayor y menor costo total (con desempate por fecha más reciente)
+        mayor_tray = max(datos["trayectos"], key=lambda x: (x["costo"], x["dropoff"]))
+        menor_tray = min(datos["trayectos"], key=lambda x: (x["costo"], -x["dropoff"].timestamp()))
+
+        stats_franjas.append({
+            "franja": f"[{franja} - {franja+1})",
+            "costo_prom": costo_prom,
+            "num_trayectos": len(datos["costos"]),
+            "duracion_prom": duracion_prom,
+            "pasajeros_prom": pasajeros_prom,
+            "costo_max": mayor_tray["costo"],
+            "costo_min": menor_tray["costo"]
+        })
+
+    # Seleccionar franja segun filtro
+    if filtro == "MAYOR":
+        mejor = max(stats_franjas, key=lambda x: x["costo_prom"])
+    elif filtro == "MENOR":
+        mejor = min(stats_franjas, key=lambda x: x["costo_prom"])
+    else:
+        return {"error": "Filtro inválido, use 'MAYOR' o 'MENOR'"}
+
+    fin = time.time()
+    tiempo_ms = (fin - inicio) * 1000
+
+    return {
+        "tiempo_ejecucion_ms": tiempo_ms,
+        "filtro": filtro,
+        "total_trayectos": total_filtrados,
+        "resultado": mejor
+    }
 
 def req_6(catalog):
     """
@@ -72,6 +323,8 @@ def req_6(catalog):
     """
     # TODO: Modificar el requerimiento 6
     pass
+
+
 
 
 def req_7(catalog):
