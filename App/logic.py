@@ -63,7 +63,6 @@ def req_1(catalog,num_pasajeros):
     """
     Retorna el resultado del requerimiento 1
     """
-    # TODO: Modificar el requerimiento 1
     
     inicio = time.time()  # Pour mesurer le temps d'exécution
 
@@ -72,42 +71,59 @@ def req_1(catalog,num_pasajeros):
         if int(t["passenger_count"]) == num_pasajeros
     ]
     
-    total_trayectos = len(trayectos_filtrados)
-    if total_trayectos == 0:
-        return {"mensaje": f"No hay trayectos para {num_pasajeros} pasajeros."}
+    inicio = time.time()
 
-    suma_duracion = 0
-    suma_costo = 0
-    suma_distancia = 0
-    suma_peajes = 0
-    suma_propina = 0
-    fechas_inicio = []
-    tipos_pago = []
+    suma_duracion = suma_costo = suma_distancia = suma_peajes = suma_propina = 0
+    total_trayectos = len(trayectos_filtrados)
+
+    # Dictionnaires pour compter fréquences
+    freq_pagos = {}
+    freq_fechas = {}
+
+    # Suivi direct du max
+    max_pago = None
+    max_pago_count = 0
+    max_fecha = None
+    max_fecha_count = 0
 
     for t in trayectos_filtrados:
         inicio_tray = datetime.strptime(t["pickup_datetime"], "%Y-%m-%d %H:%M:%S")
         fin_tray = datetime.strptime(t["dropoff_datetime"], "%Y-%m-%d %H:%M:%S")
         duracion_min = (fin_tray - inicio_tray).total_seconds() / 60
+
         suma_duracion += duracion_min
         suma_costo += float(t["total_amount"])
         suma_distancia += float(t["trip_distance"])
         suma_peajes += float(t["tolls_amount"])
         suma_propina += float(t["tip_amount"])
-        fechas_inicio.append(inicio_tray.strftime("%Y-%m-%d"))
-        tipos_pago.append(t["payment_type"])
-    
+
+        # --- Contar fecha ---
+        fecha = inicio_tray.strftime("%Y-%m-%d")
+        if fecha not in freq_fechas:
+            freq_fechas[fecha] = 0
+        freq_fechas[fecha] += 1
+        if freq_fechas[fecha] > max_fecha_count:
+            max_fecha = fecha
+            max_fecha_count = freq_fechas[fecha]
+
+        # --- Contar tipo de pago ---
+        pago = t["payment_type"]
+        if pago not in freq_pagos:
+            freq_pagos[pago] = 0
+        freq_pagos[pago] += 1
+        if freq_pagos[pago] > max_pago_count:
+            max_pago = pago
+            max_pago_count = freq_pagos[pago]
+
     tiempo_promedio = suma_duracion / total_trayectos
     costo_promedio = suma_costo / total_trayectos
     distancia_promedio = suma_distancia / total_trayectos
     peaje_promedio = suma_peajes / total_trayectos
     propina_promedio = suma_propina / total_trayectos
 
-    pago_mas_usado = Counter(tipos_pago).most_common(1)[0]
-    fecha_mas_frecuente = Counter(fechas_inicio).most_common(1)[0][0]
-
     fin = time.time()
     tiempo_ejecucion_ms = (fin - inicio) * 1000
-    
+
     return {
         "tiempo_ejecucion_ms": tiempo_ejecucion_ms,
         "total_trayectos": total_trayectos,
@@ -116,8 +132,8 @@ def req_1(catalog,num_pasajeros):
         "distancia_promedio_millas": distancia_promedio,
         "peaje_promedio": peaje_promedio,
         "propina_promedio": propina_promedio,
-        "tipo_pago_mas_usado": f"{pago_mas_usado[0]} - {pago_mas_usado[1]}",
-        "fecha_inicio_mas_frecuente": fecha_mas_frecuente
+        "tipo_pago_mas_usado": f"{max_pago} - {max_pago_count}",
+        "fecha_inicio_mas_frecuente": max_fecha
     }
     
 
