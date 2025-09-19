@@ -6,7 +6,6 @@ def new_logic():
     """
         Se crea una instancia del controlador
     """
-    #TODO: Llamar la función de la lógica donde se crean las estructuras de datos
     return logic.new_logic()
     
 
@@ -27,18 +26,16 @@ def load_data(control):
     """
     Carga los datos
     """
-    #TODO: Realizar la carga de datos
     
     filename = input("Indiquez le chemin du fichier CSV: ")
     control = logic.load_data(control, filename)
     
-    # Affiche les 5 premiers trajets
-    if control and "taxis" in control:
+    if control and "elements" in control:
         print("Primeros 5 trayectos:")
-        for t in control["taxis"][:5]:
+        for t in control["elements"][:5]:
             print(t)
         print("Ultimos 5 trayectos:")
-        for t in control["taxis"][-5:]: 
+        for t in control["elements"][-5:]: 
             print(t)
     return control
 
