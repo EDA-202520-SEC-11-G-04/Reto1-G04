@@ -139,18 +139,24 @@ def req_1(catalog,num_pasajeros):
     
 
 
-def req_2(catalog, metodo_pago):
+def req_2(my_list, metodo_pago):
     """
     Retorna el resultado del requerimiento 2
     """
     
     inicio_tiempo = time.time()
 
-    viajes_filtrados = [v for v in catalog if v["payment_type"] == metodo_pago]
+    n = list.size(my_list)
+    viajes_filtrados = list.new_list()
+    
+    for i in range(n):
+        v = list.get_element(my_list, i)
+        if v["payment_type"] == metodo_pago:
+            list.add_last(viajes_filtrados, v)
 
-    if not viajes_filtrados:
+    if list.is_empty(viajes_filtrados):
         return {"mensaje": "No se encontraron viajes con ese método de pago"}
-
+    
     total_duracion = 0
     total_costo = 0
     total_distancia = 0
@@ -159,21 +165,22 @@ def req_2(catalog, metodo_pago):
     pasajeros = []
     fechas_finalizacion = []
 
-    for v in viajes_filtrados:
-        inicio = datetime.strptime(v["pickup_datetime"], "%Y-%m-%d %H:%M:%S")
-        fin = datetime.strptime(v["dropoff_datetime"], "%Y-%m-%d %H:%M:%S")
+    m = list.size(viajes_filtrados)
+    
+    for v in range(m):
+        j = list.get_element(viajes_filtrados, v)
+        inicio = datetime.strptime(j["pickup_datetime"], "%Y-%m-%d %H:%M:%S")
+        fin = datetime.strptime(j["dropoff_datetime"], "%Y-%m-%d %H:%M:%S")
         duracion = (fin - inicio).total_seconds() / 60
+        
         total_duracion += duracion
+        total_costo += float(j["total_amount"])
+        total_distancia += float(j["trip_distance"])
+        total_peajes += float(j["tolls_amount"])
+        total_propinas += float(j["tip_amount"])
 
-        total_costo += float(v["total_amount"])
-        total_distancia += float(v["trip_distance"])
-        total_peajes += float(v["tolls_amount"])
-        total_propinas += float(v["tip_amount"])
-
-        pasajeros.append(int(v["passenger_count"]))
+        pasajeros.append(int(j["passenger_count"]))
         fechas_finalizacion.append(fin.strftime("%Y-%m-%d"))
-
-    n_viajes = len(viajes_filtrados)
 
     pasajero_mas_frecuente, cantidad = Counter(pasajeros).most_common(1)[0]
     fecha_mas_frecuente = Counter(fechas_finalizacion).most_common(1)[0][0]
@@ -183,17 +190,16 @@ def req_2(catalog, metodo_pago):
 
     return {
         "tiempo_ms": tiempo_ms,
-        "total_viajes": n_viajes,
-        "duracion_promedio_min": total_duracion / n_viajes,
-        "costo_promedio": total_costo / n_viajes,
-        "distancia_promedio": total_distancia / n_viajes,
-        "peajes_promedio": total_peajes / n_viajes,
-        "propinas_promedio": total_propinas / n_viajes,
+        "total_viajes": m,
+        "duracion_promedio_min": total_duracion / m,
+        "costo_promedio": total_costo / m,
+        "distancia_promedio": total_distancia / m,
+        "peajes_promedio": total_peajes / m,
+        "propinas_promedio": total_propinas / m,
         "pasajero_mas_frecuente": f"{pasajero_mas_frecuente} - {cantidad}",
         "fecha_finalizacion_mas_frecuente": fecha_mas_frecuente
     }
-
-    # TODO: Modificar el requerimiento 2
+    
     pass
 
 
@@ -427,16 +433,16 @@ def req_5(catalog, filtro, fecha_inicio_str, fecha_fin_str):
     }
     
 
-def req_6(catalog, neighborhoods, barrio_inicio, fecha_inicial, fecha_final):
-    """
-    Retorna el resultado del requerimiento 6
-    """
+def req_6(my_list, neighborhoods, barrio_inicio, fecha_inicial, fecha_final):
+    
     fecha_inicial = datetime.strptime(fecha_inicial, "%Y-%m-%d")
     fecha_final = datetime.strptime(fecha_final, "%Y-%m-%d")
 
-    viajes_filtrados = []
+    viajes_filtrados = list.new_list
+    n = list.size(my_list)
     
-    for viaje in catalog:
+    for i in range(n):
+        viaje = list.get_element(my_list, i)
         fecha_viaje = datetime.strptime(viaje["pickup_datetime"], "%Y-%m-%d %H:%M:%S")
         if not (fecha_inicial <= fecha_viaje <= fecha_final):
             continue
@@ -444,21 +450,21 @@ def req_6(catalog, neighborhoods, barrio_inicio, fecha_inicial, fecha_final):
         barrio = encontrar_barrio(float(viaje["pickup_latitude"]),
                                   float(viaje["pickup_longitude"]),
                                   neighborhoods)
-        if barrio != barrio_inicio:
-            continue
+        if barrio == barrio_inicio:
+            list.add_last(viajes_filtrados, viaje)
 
-        viajes_filtrados.append(viaje)
 
-    if not viajes_filtrados:
-        return {"mensaje": "No se encontraron trayectos en el rango y barrio indicados"}
+    if list.is_empty(viajes_filtrados):
+        return {"No se encontraron trayectos en el rango y barrio indicados"}
 
     total_distancia = 0
     total_duracion = 0
     destinos = []
-
     pagos = defaultdict(lambda: {"count": 0, "total": 0, "duracion": 0})
 
-    for v in viajes_filtrados:
+    m = list.size(viajes_filtrados)
+    for i in range(m):
+        v = list.get_element(viajes_filtrados, i)
         inicio = datetime.strptime(v["pickup_datetime"], "%Y-%m-%d %H:%M:%S")
         fin = datetime.strptime(v["dropoff_datetime"], "%Y-%m-%d %H:%M:%S")
         duracion = (fin - inicio).total_seconds() / 60
@@ -476,7 +482,7 @@ def req_6(catalog, neighborhoods, barrio_inicio, fecha_inicial, fecha_final):
         pagos[metodo]["total"] += float(v["total_amount"])
         pagos[metodo]["duracion"] += duracion
 
-    n_viajes = len(viajes_filtrados)
+    n_viajes = list.size(viajes_filtrados)
     distancia_prom = total_distancia / n_viajes
     duracion_prom = total_duracion / n_viajes
     barrio_destino_mas_frecuente = Counter(destinos).most_common(1)[0][0]
@@ -515,14 +521,15 @@ def haversine(lat1, lon1, lat2, lon2):
 def encontrar_barrio(lat, lon, neighborhoods):
     min_dist = float("inf")
     barrio_cercano = None
-    for n in neighborhoods:
-        dist = haversine(lat, lon, float(n["latitude"]), float(n["longitude"]))
+    n = list.size(neighborhoods)
+    for i in range(n):
+        j = list.get_element(neighborhoods, i)
+        dist = haversine(lat, lon, float(j["latitude"]), float(j["longitude"]))
         if dist < min_dist:
             min_dist = dist
-            barrio_cercano = n["neighborhood"]
+            barrio_cercano = j["neighborhood"]
     return barrio_cercano
 
-# TODO: Modificar el requerimiento 6
     pass
 
 # Funciones para medir tiempos de ejecucion
