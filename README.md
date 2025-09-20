@@ -33,7 +33,7 @@ This repository is part of the data structure and algorithms (#EDA) teaching fra
 The students edit this section to add their names, Uniandes emails, and specify which project functionality of the project they will implement.
 
 1. Estudiante No. 1 Bastien Thirion, 202525085, b.thirion@uniandes.edu.co
-1. Estudiante No. 2 Jonathan David Galenao Sos <j.galenaos@uniandes.edu.co> 
+1. Estudiante No. 2 Jonathan Galeano, 202226332, j.galeanos@uniandes.edu.co 
 1. Student No. 3 Name, Student No. 3 Uniandes Email, Student No. 3 owned functionality.
 
 [Back to top](#retos-template)
